@@ -14,6 +14,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     List<Pedido> findByDataCadastro(LocalDate dataCadastro);
 
-    List<Pedido> findByCodigoCliente(Long codigoCliente);
+    List<Pedido> findByClienteId(Long clienteid);
 
 }

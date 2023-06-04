@@ -1,10 +1,14 @@
 package br.com.eicon.teste.service;
 
+import br.com.eicon.teste.domain.Cliente;
 import br.com.eicon.teste.domain.Pedido;
-import br.com.eicon.teste.dto.PedidoDTO;
+import br.com.eicon.teste.exception.PedidoExistsException;
+import br.com.eicon.teste.exception.PedidoLimitException;
+import br.com.eicon.teste.exception.PedidoNotFoundException;
+import br.com.eicon.teste.exception.PedidoNumeroControleDuplicatedException;
+import br.com.eicon.teste.record.PedidoRecord;
 import br.com.eicon.teste.repository.PedidoRepository;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,77 +22,72 @@ import java.util.Set;
 @Service
 public class PedidoService {
 
-    @Autowired
-    private PedidoRepository pedidoRepository;
+    private final PedidoRepository pedidoRepository;
+    private final ClienteService clienteService;
+
+    public PedidoService(PedidoRepository pedidoRepository, ClienteService clienteService) {
+        this.pedidoRepository = pedidoRepository;
+        this.clienteService = clienteService;
+    }
 
     public Pedido findPedidoById(Long id) {
         return pedidoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(String.format(
-                        "Não foi encontrado o pedido com o id: %s", id)));
+                .orElseThrow(PedidoNotFoundException::new);
     }
 
     public Pedido findPedidoByNumeroControle(String numeroControle) {
         return Optional.ofNullable(pedidoRepository.findByNumeroControle(numeroControle))
-                .orElseThrow(() -> new IllegalArgumentException(String.format(
-                        "Não foi encontrado o pedido com o número de controle: %s", numeroControle)));
+                .orElseThrow(PedidoNotFoundException::new);
     }
 
     public List<Pedido> findPedidoByDataCadastro(LocalDate dataCadastro) {
         return Optional.ofNullable(pedidoRepository.findByDataCadastro(dataCadastro))
-                .orElseThrow(() -> new IllegalArgumentException(String.format(
-                        "Não foram encontrados pedidos para a data: %s", dataCadastro)));
+                .orElseThrow(PedidoNotFoundException::new);
     }
 
     public List<Pedido> findAllPedidos() {
         return pedidoRepository.findAll();
     }
 
-    public void validaListaPedidos(List<PedidoDTO> listaPedidos) {
+    public void validaListaPedidos(List<PedidoRecord> listaPedidos) {
         if (listaPedidos.size() > 10) {
-            throw new IllegalArgumentException("Limite máximo de 10 pedidos excedido");
+            throw new PedidoLimitException();
         }
 
         Set<String> listaNumerosControle = new HashSet<>();
 
-        for (PedidoDTO dto : listaPedidos) {
-            String numeroControle = dto.getNumeroControle();
+        for (PedidoRecord record : listaPedidos) {
+            String numeroControle = record.numeroControle();
 
             Pedido pedidoExistente = pedidoRepository.findByNumeroControle(numeroControle);
             if (pedidoExistente != null) {
-                throw new IllegalArgumentException(String.format(
-                        "Já existe um pedido cadastrado com o número de controle: %s", numeroControle));
+                throw new PedidoExistsException(numeroControle);
             }
 
             if (listaNumerosControle.contains(numeroControle)) {
-                throw new IllegalArgumentException(String.format(
-                        "O número de controle %s está duplicado", numeroControle));
+                throw new PedidoNumeroControleDuplicatedException(numeroControle);
             } else {
                 listaNumerosControle.add(numeroControle);
             }
         }
     }
 
-
-
-    public void savePedido(List<PedidoDTO> listaPedido) {
+    public void savePedido(List<PedidoRecord> listaPedido) {
         validaListaPedidos(listaPedido);
 
         listaPedido.stream()
-                .map(pedidoDTO -> {
+                .map(pedidoRecord -> {
                     Pedido novoPedido = new Pedido();
-                    BeanUtils.copyProperties(pedidoDTO, novoPedido);
 
-                    BigDecimal quantidade = Optional.ofNullable(novoPedido.getQuantidade()).orElse(BigDecimal.ONE);
-                    BigDecimal valorTotal = novoPedido.getValor().multiply(quantidade);
-                    BigDecimal valorDesconto = BigDecimal.ZERO;
+                    Cliente clienteEncontrado = clienteService.findClienteById(pedidoRecord.codigoCliente());
+                    novoPedido.setCliente(clienteEncontrado);
+                    novoPedido.setDataCadastro(pedidoRecord.dataCadastro());
+                    novoPedido.setValor(pedidoRecord.valor());
+                    novoPedido.setDescricao(pedidoRecord.descricao());
+                    novoPedido.setQuantidade(pedidoRecord.quantidade());
+                    novoPedido.setNumeroControle(pedidoRecord.numeroControle());
 
-                    if (quantidade.compareTo(BigDecimal.valueOf(5)) > 0) {
-                        if (quantidade.compareTo(BigDecimal.valueOf(10)) >= 0) {
-                            valorDesconto = valorTotal.multiply(BigDecimal.valueOf(0.1));
-                        } else {
-                            valorDesconto = valorTotal.multiply(BigDecimal.valueOf(0.05));
-                        }
-                    }
+                    BigDecimal valorDesconto = getValorDesconto(novoPedido);
 
                     valorDesconto = valorDesconto.setScale(2, RoundingMode.HALF_UP);
 
@@ -99,21 +98,40 @@ public class PedidoService {
                 .forEach(pedidoRepository::save);
     }
 
+    private static BigDecimal getValorDesconto(Pedido novoPedido) {
+        BigDecimal quantidade = Optional.ofNullable(novoPedido.getQuantidade()).orElse(BigDecimal.ONE);
+        BigDecimal valorTotal = novoPedido.getValor().multiply(quantidade);
+        BigDecimal valorDesconto = BigDecimal.ZERO;
 
-    public Pedido updatePedido(Pedido pedido) {
-        Long id = pedido.getId();
+        if (quantidade.compareTo(BigDecimal.valueOf(5)) > 0) {
+            if (quantidade.compareTo(BigDecimal.valueOf(10)) >= 0) {
+                valorDesconto = valorTotal.multiply(BigDecimal.valueOf(0.1));
+            } else {
+                valorDesconto = valorTotal.multiply(BigDecimal.valueOf(0.05));
+            }
+        }
+        return valorDesconto;
+    }
+
+    public Pedido updatePedido(Pedido pedido, Long id) {
         Pedido pedidoExistente = pedidoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(String.format(
-                        "Não foi encontrado o pedido com o id: %d", id)));
+                .orElseThrow(PedidoNotFoundException::new);
 
-        BeanUtils.copyProperties(pedido, pedidoExistente);
+        BeanUtils.copyProperties(pedido, pedidoExistente, "id", "dataCadastro");
+
+        Cliente cliente = pedido.getCliente();
+        if (cliente != null && !cliente.equals(pedidoExistente.getCliente())) {
+            Cliente clienteEncontrado = clienteService.findClienteById(cliente.getId());
+            pedidoExistente.setCliente(clienteEncontrado);
+        }
+
         return pedidoRepository.save(pedidoExistente);
     }
 
     public void deletePedido(Long id) {
         Pedido pedidoExistente = pedidoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(String.format(
-                        "Não foi encontrado o pedido com o id: %d", id)));
+                .orElseThrow(PedidoNotFoundException::new);
+
         pedidoRepository.delete(pedidoExistente);
     }
 }

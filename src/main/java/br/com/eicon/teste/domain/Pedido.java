@@ -33,7 +33,7 @@ public class Pedido {
     private BigDecimal valorDesconto;
     @Column(name = "quantidade")
     private BigDecimal quantidade = BigDecimal.ONE;
-    @Column(name = "codigo_cliente")
-    private Long codigoCliente;
-
+    @ManyToOne
+    @JoinColumn(name = "id_cliente")
+    private Cliente cliente;
 }
