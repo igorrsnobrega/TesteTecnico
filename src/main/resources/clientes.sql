@@ -1,0 +1,10 @@
+insert into cliente (id, nome) values (1, 'Mark Codeberg'),
+                                      (2, 'Bill Bates'),
+                                      (3, 'Steve Javascripts'),
+                                      (4, 'Elon MySQL'),
+                                      (5, 'Ada Loving'),
+                                      (6, 'Grace JavaHopper'),
+                                      (7, 'Alan Binary'),
+                                      (8, 'Tim ASCII'),
+                                      (9, 'Linus TorvBytes'),
+                                      (10, 'Larry Pagelines');
