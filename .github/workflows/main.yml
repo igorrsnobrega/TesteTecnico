@@ -1,4 +1,4 @@
-name: Java CI with Docker
+name: Pipeline Java Teste Tecnico
 
 on:
   push:
@@ -9,10 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
       - name: Set up JDK 17
         uses: actions/setup-java@v2
         with:
@@ -26,18 +22,5 @@ jobs:
       - name: Build with Maven
         run: mvn clean install
 
-      - name: Start MySQL Container
-        run: |
-          docker run -d --name mysql-container -e MYSQL_ROOT_PASSWORD=root -p 3306:3306 mysql:latest
-
-      - name: Wait for MySQL to Start
-        run: |
-          sleep 15
-
       - name: Run Application Tests
         run: mvn test
-
-      - name: Stop MySQL Container
-        run: |
-          docker stop mysql-container
-          docker rm mysql-container
