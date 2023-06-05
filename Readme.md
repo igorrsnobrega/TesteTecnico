@@ -16,6 +16,9 @@ Para executar os testes unitários, você pode rodar o seguinte comando:
 - Linux: `./check_for_commit.sh`
 - Windows: `./check_for_commit.bat`
 
+Você também pode acompanhar a cobertura dos testes pelo caminho:
+- `/teste/target/site/jacoco/index.html`
+
 ## Documentação da API
 
 A documentação da API está disponível em:
