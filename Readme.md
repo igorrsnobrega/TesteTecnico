@@ -9,6 +9,7 @@ Este projeto utiliza as seguintes tecnologias:
 - Java JDK 17
 - H2 Database
 - Spring Boot 3.1.0
+- Docker
 
 ## Executando os testes unitários
 
@@ -29,4 +30,26 @@ A documentação da API está disponível em:
 Você pode acompanhar a pipeline de Integração Contínua (CI) no menu "Actions" do GitHub ou no seguinte link:
 - [GitHub Actions - https://github.com/igorrsnobrega/TesteTecnico/actions](https://github.com/igorrsnobrega/TesteTecnico/actions)
 
-A aplicação estará disponível na URL: http://localhost:8080.
+## Executando o Docker
+
+Para executar o projeto usando o Docker, siga as etapas abaixo:
+
+1. Certifique-se de ter o Docker instalado e em execução na sua máquina.
+
+2. No diretório raiz do projeto, abra um terminal.
+
+3. Execute o seguinte comando para construir a imagem Docker:
+
+```shell
+docker build -t teste_app .
+```
+
+4. Após concluir a construção da imagem, execute o seguinte comando para iniciar o contêiner Docker:
+
+```shell
+docker run -p 8080:8080 teste_app
+```
+
+Isso irá iniciar o contêiner Docker e disponibilizará a aplicação na URL: http://localhost:8080.
+
+Certifique-se de que a porta 8080 esteja disponível para uso no seu sistema.
