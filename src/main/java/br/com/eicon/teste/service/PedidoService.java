@@ -24,6 +24,7 @@ public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
     private final ClienteService clienteService;
+    private static final int MAX_PEDIDOS = 10;
 
     public PedidoService(PedidoRepository pedidoRepository, ClienteService clienteService) {
         this.pedidoRepository = pedidoRepository;
@@ -50,7 +51,7 @@ public class PedidoService {
     }
 
     public void validaListaPedidos(List<PedidoRecord> listaPedidos) {
-        if (listaPedidos.size() > 10) {
+        if (listaPedidos.size() > MAX_PEDIDOS) {
             throw new PedidoLimitException();
         }
 
@@ -59,8 +60,7 @@ public class PedidoService {
         for (PedidoRecord record : listaPedidos) {
             String numeroControle = record.numeroControle();
 
-            Pedido pedidoExistente = pedidoRepository.findByNumeroControle(numeroControle);
-            if (pedidoExistente != null) {
+            if (pedidoRepository.findByNumeroControle(numeroControle) != null) {
                 throw new PedidoExistsException(numeroControle);
             }
 
@@ -75,27 +75,30 @@ public class PedidoService {
     public void savePedido(List<PedidoRecord> listaPedido) {
         validaListaPedidos(listaPedido);
 
-        listaPedido.stream()
-                .map(pedidoRecord -> {
-                    Pedido novoPedido = new Pedido();
+        listaPedido.forEach(pedidoRecord -> {
+            Pedido novoPedido = createPedidoFromRecord(pedidoRecord);
+            pedidoRepository.save(novoPedido);
+        });
+    }
 
-                    Cliente clienteEncontrado = clienteService.findClienteById(pedidoRecord.codigoCliente());
-                    novoPedido.setCliente(clienteEncontrado);
-                    novoPedido.setDataCadastro(pedidoRecord.dataCadastro());
-                    novoPedido.setValor(pedidoRecord.valor());
-                    novoPedido.setDescricao(pedidoRecord.descricao());
-                    novoPedido.setQuantidade(pedidoRecord.quantidade());
-                    novoPedido.setNumeroControle(pedidoRecord.numeroControle());
+    private Pedido createPedidoFromRecord(PedidoRecord pedidoRecord) {
+        Pedido novoPedido = new Pedido();
 
-                    BigDecimal valorDesconto = getValorDesconto(novoPedido);
+        Cliente clienteEncontrado = clienteService.findClienteById(pedidoRecord.codigoCliente());
+        novoPedido.setCliente(clienteEncontrado);
+        novoPedido.setDataCadastro(pedidoRecord.dataCadastro());
+        novoPedido.setValor(pedidoRecord.valor());
+        novoPedido.setDescricao(pedidoRecord.descricao());
+        novoPedido.setQuantidade(pedidoRecord.quantidade());
+        novoPedido.setNumeroControle(pedidoRecord.numeroControle());
 
-                    valorDesconto = valorDesconto.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal valorDesconto = getValorDesconto(novoPedido);
 
-                    novoPedido.setValorDesconto(valorDesconto);
+        valorDesconto = valorDesconto.setScale(2, RoundingMode.HALF_UP);
 
-                    return novoPedido;
-                })
-                .forEach(pedidoRepository::save);
+        novoPedido.setValorDesconto(valorDesconto);
+
+        return novoPedido;
     }
 
     private static BigDecimal getValorDesconto(Pedido novoPedido) {

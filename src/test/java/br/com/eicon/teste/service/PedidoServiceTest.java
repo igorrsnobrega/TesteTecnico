@@ -192,7 +192,7 @@ public class PedidoServiceTest {
     }
 
     @Test
-    public void testSavePedidoWithQuantidadeNull() {
+    public void testSavePedidoWithQuantidadeZero() {
         List<PedidoRecord> listaPedido = new ArrayList<>();
         PedidoRecord pedidoRecord = new PedidoRecord("12345",
                 LocalDate.of(2023, 6, 1),
